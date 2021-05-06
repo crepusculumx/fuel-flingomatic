@@ -12,7 +12,7 @@ local LIGHT_FUEL_LIST = {
         ["cutgrass"] = true,
         ["log"] = true,
         ["boards"] = true,
-        ["twig"] = true,
+        ["twigs"] = true,
         ["charcoal"] = true,
         ["glommerfuel"] = true
     },
@@ -34,46 +34,6 @@ local N_MAX = 10
 local T_MAX = 3
 local CHECK_FERT_TIME = 5
 
-local function LaunchProjectile(inst, target, item)
-    local waittime = 0.15
-    local x, y, z = inst.Transform:GetWorldPosition() -- 建筑坐标
-
-    local targetpos = target:GetPosition()
-
-    local projectile = SpawnPrefab("fuel_projectile")
-    projectile.Transform:SetPosition(x, y, z)
-    projectile.AnimState:SetScale(0.5, 0.5)
-    projectile.AnimState:SetBank(item.prefab)
-    projectile.AnimState:SetBuild(item.prefab)
-    projectile.target = target
-    projectile.item = item
-
-    local dstring = item.GetDebugString and item:GetDebugString()
-    if dstring then
-        local bank, build, anim = string.match(dstring, "AnimState: bank: (.*) build: (.*) anim: (.*) anim")
-        if bank and build and anim then
-            if bank == "FROMNUM" then
-                bank = "birdegg" -- For some reason the birdegg get the wrong bank
-            end
-            projectile.AnimState:SetBank(bank)
-            projectile.AnimState:SetBuild(build)
-            projectile.AnimState:PlayAnimation(anim, false)
-            projectile.AnimState:SetTime(projectile.AnimState:GetCurrentAnimationLength()) -- To stop dump animation
-        end
-    end
-
-    local dx = targetpos.x - x
-    local dz = targetpos.z - z
-    local rangesq = dx * dx + dz * dz
-    local maxrange = FERTILIZATION_RANGE
-    local speed = easing.linear(rangesq, 20, 3, maxrange * maxrange)
-    projectile.components.complexprojectile:SetHorizontalSpeed(speed)
-    projectile.components.complexprojectile:SetGravity(-25)
-    projectile.components.complexprojectile:Launch(targetpos, inst, inst)
-    repeat
-
-    until projectile ~= nil
-end
 
 local function onopen(inst)
     if inst:HasTag("burnt") then
@@ -174,12 +134,31 @@ local function onbuilt(inst)
     inst.AnimState:PushAnimation("idle", true)
 end
 
-local function onIsNight(inst)
-    inst.isNight = true
-end
+local function LaunchProjectile(inst, target, item)
+    local waittime = 0.15
+    local x, y, z = inst.Transform:GetWorldPosition() -- 建筑坐标
 
-local function onIsDay(inst)
-    inst.isNight = false
+    local targetpos = target:GetPosition()
+
+    local projectile = SpawnPrefab("fuel_projectile")
+    projectile.Transform:SetPosition(x, y, z)
+    projectile.AnimState:SetScale(0.5, 0.5)
+    projectile.AnimState:SetBank(item.prefab)
+    projectile.AnimState:SetBuild(item.prefab)
+    projectile.target = target
+    projectile.item = item
+
+    local dx = targetpos.x - x
+    local dz = targetpos.z - z
+    local rangesq = dx * dx + dz * dz
+    local maxrange = FERTILIZATION_RANGE
+    local speed = easing.linear(rangesq, 20, 3, maxrange * maxrange)
+    projectile.components.complexprojectile:SetHorizontalSpeed(speed)
+    projectile.components.complexprojectile:SetGravity(-25)
+    projectile.components.complexprojectile:Launch(targetpos, inst, inst)
+    repeat
+
+    until projectile ~= nil
 end
 
 local function CheckForAddFuel(inst)
