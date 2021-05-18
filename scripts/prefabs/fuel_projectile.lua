@@ -33,17 +33,13 @@ local function fuel_projectile_fn()
 
     inst.entity:SetPristine()
 
-    if not TheWorld.ismastersim then
-        return inst
-    end
+    if not TheWorld.ismastersim then return inst end
 
     inst:AddComponent("locomotor")
 
     inst:AddComponent("complexprojectile")
 
-    if not TheWorld.ismastersim then
-        return inst
-    end
+    if not TheWorld.ismastersim then return inst end
 
     inst.persists = false
 

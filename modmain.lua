@@ -2,7 +2,7 @@ local require = GLOBAL.require
 local Vector3 = GLOBAL.Vector3
 
 Assets = {Asset("ANIM", "anim/ui_chest_3x3.zip"), Asset("ATLAS", "images/inventoryimages/fuel_flingomatic.xml"),
-          Asset("ATLAS", "minimap/fuel_flingomatic.xml")}
+          Asset("ATLAS", "minimap/fuel_flingomatic.xml")} --"atlas"小地图图标和建造栏图标能用
 
 PrefabFiles = {"fuel_flingomatic", "fuel_projectile"}
 

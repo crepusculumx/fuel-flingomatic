@@ -2,8 +2,12 @@ require "prefabutil"
 
 local easing = require("easing")
 
-local assets = {Asset("ANIM", "anim/fuel_flingomatic.zip"), Asset("IMAGE", "minimap/fuel_flingomatic.tex"),
-                Asset("ATLAS", "minimap/fuel_flingomatic.xml"), Asset("ANIM", "anim/ui_chest_3x3.zip")}
+local assets = {
+    Asset("ANIM", "anim/fuel_flingomatic.zip"),
+    Asset("IMAGE", "minimap/fuel_flingomatic.tex"),
+    Asset("ATLAS", "minimap/fuel_flingomatic.xml"),
+    Asset("ANIM", "anim/ui_chest_3x3.zip")
+}
 
 local prefabs = {"fuel_projectile", "collapse_small"}
 
@@ -24,9 +28,7 @@ local LIGHT_FUEL_LIST = {
         ["charcoal"] = true,
         ["glommerfuel"] = true
     },
-    ["nightlight"] = {
-        ["nightmarefuel"] = true
-    }
+    ["nightlight"] = {["nightmarefuel"] = true}
 }
 
 local FERTILIZATION_RANGE = 20
@@ -34,57 +36,53 @@ local N_MAX = 10
 local T_MAX = 3
 local CHECK_FERT_TIME = 5
 
-
 local function onopen(inst)
-    if inst:HasTag("burnt") then
-        return
-    end
+    if inst:HasTag("burnt") then return end
 
     if inst.components.machine and inst.components.machine.ison == true then
-        inst.AnimState:PlayAnimation("open")
-        inst.SoundEmitter:PlaySound("dontstarve/common/together/portable/spicer/lid_open")
+        --inst.AnimState:PlayAnimation("open") --打开关闭容器无动画
+        inst.SoundEmitter:PlaySound(
+            "dontstarve/common/together/portable/spicer/lid_open")
     end
     inst.isopen = true
 end
 
 local function onclose(inst)
-    if inst:HasTag("burnt") then
-        return
-    end
+    if inst:HasTag("burnt") then return end
 
     if inst.components.machine and inst.components.machine.ison == true then
-        inst.AnimState:PlayAnimation("close")
-        inst.AnimState:PushAnimation("idle", true)
+        --inst.AnimState:PlayAnimation("close")
+        --inst.AnimState:PushAnimation("idle", true) --打开关闭容器无动画
         inst:DoTaskInTime(0.4, function()
-            inst.SoundEmitter:PlaySound("dontstarve/common/together/portable/spicer/lid_close")
+            inst.SoundEmitter:PlaySound(
+                "dontstarve/common/together/portable/spicer/lid_close")
         end)
     end
     inst.isopen = false
 end
 
 local function onturnon(inst)
-    if inst:HasTag("burnt") then
-        return
-    end
+    if inst:HasTag("burnt") then return end
 
     if inst.isopen == false then
-        inst.AnimState:PlayAnimation("close")
-        inst.AnimState:PushAnimation("idle", true)
+        inst.AnimState:PlayAnimation("open") --
+        inst.AnimState:PushAnimation("idle", true) --可能问题在这，PushAnimation是在这之后一直执行这个动画
         inst:DoTaskInTime(0.4, function()
-            inst.SoundEmitter:PlaySound("dontstarve/common/together/portable/spicer/lid_close")
+            inst.SoundEmitter:PlaySound(
+                "dontstarve/common/together/portable/spicer/lid_close")
         end)
     end
     inst.components.machine.ison = true
 end
 
 local function onturnoff(inst)
-    if inst:HasTag("burnt") then
-        return
-    end
+    if inst:HasTag("burnt") then return end
 
     if inst.isopen == false then
-        inst.AnimState:PlayAnimation("open")
-        inst.SoundEmitter:PlaySound("dontstarve/common/together/portable/spicer/lid_open")
+        inst.AnimState:PlayAnimation("close") --
+        inst.AnimState:PushAnimation("idle_off", true) --这里是没问题的
+        inst.SoundEmitter:PlaySound(
+            "dontstarve/common/together/portable/spicer/lid_open")
     end
     inst.components.machine.ison = false
 end
@@ -109,7 +107,12 @@ end
 local function onhit(inst, worker)
     if not inst:HasTag("burnt") then
         inst.components.container:Close()
-        inst.AnimState:PlayAnimation("hit")
+        --inst.AnimState:PlayAnimation("hit")
+        if inst.components.machine.ison == true then
+            inst.AnimState:PlayAnimation("hit_on") --打开时锤掉的动画
+        else
+            inst.AnimState:PlayAnimation("hit_off") --关闭时锤掉的动画
+        end
         inst.components.container:DropEverything()
         inst.components.machine.ison = true
         -- TODO: A hit animation for it when its closed and when its open, but not now
@@ -117,20 +120,21 @@ local function onhit(inst, worker)
 end
 
 local function onsave(inst, data)
-    if inst:HasTag("burnt") or (inst.components.burnable ~= nil and inst.components.burnable:IsBurning()) then
-        data.burnt = true
-    end
+    if inst:HasTag("burnt") or
+        (inst.components.burnable ~= nil and
+            inst.components.burnable:IsBurning()) then data.burnt = true end
 end
 
 local function onload(inst, data)
-    if data ~= nil and data.burnt and inst.components.burnable ~= nil and inst.components.burnable.onburnt ~= nil then
+    if data ~= nil and data.burnt and inst.components.burnable ~= nil and
+        inst.components.burnable.onburnt ~= nil then
         inst.components.burnable.onburnt(inst)
     end
 end
 
 local function onbuilt(inst)
     inst.SoundEmitter:PlaySound("dontstarve_DLC001/common/firesupressor_craft")
-    inst.AnimState:PlayAnimation("place")
+    inst.AnimState:PlayAnimation("place") --放置时动画
     inst.AnimState:PushAnimation("idle", true)
 end
 
@@ -156,9 +160,7 @@ local function LaunchProjectile(inst, target, item)
     projectile.components.complexprojectile:SetHorizontalSpeed(speed)
     projectile.components.complexprojectile:SetGravity(-25)
     projectile.components.complexprojectile:Launch(targetpos, inst, inst)
-    repeat
-
-    until projectile ~= nil
+    repeat until projectile ~= nil
 end
 
 local function CheckForAddFuel(inst)
@@ -177,8 +179,10 @@ local function CheckForAddFuel(inst)
                 end
                 -- 大于50%不亏才填
                 local wetmult = item:GetIsWet() and TUNING.WET_FUEL_PENALTY or 1
-                local delta = item.components.fuel.fuelvalue * target.components.fueled.bonusmult * wetmult
-                if (delta + target.components.fueled.currentfuel - target.components.fueled.maxfuel) /
+                local delta = item.components.fuel.fuelvalue *
+                                  target.components.fueled.bonusmult * wetmult
+                if (delta + target.components.fueled.currentfuel -
+                    target.components.fueled.maxfuel) /
                     target.components.fueled.maxfuel < 0.1 then
                     return true
                 end
@@ -194,27 +198,23 @@ local function CheckForAddFuel(inst)
     end
 
     -- 烧毁、开启箱子、机器关闭无效
-    if inst:HasTag("burnt") or inst.isopen or inst.components.machine.ison == false then
-        return
-    end
+    if inst:HasTag("burnt") or inst.isopen or inst.components.machine.ison ==
+        false then return end
     -- 夜晚才工作
-    if not TheWorld.state.isnight then
-        return
-    end
+    if not TheWorld.state.isnight then return end
 
     local x, y, z = inst.Transform:GetWorldPosition()
 
     -- 遍历范围内全部物品
-    for k, target in ipairs(TheSim:FindEntities(x, y, z, inst.fertilization_range)) do
+    for k, target in ipairs(TheSim:FindEntities(x, y, z,
+                                                inst.fertilization_range)) do
         local function targetCanBeFueled()
             if LIGHT_FUEL_LIST[target.prefab] == nil then
                 return false
             end
             return true
         end
-        if targetCanBeFueled() then
-            findFuelAndAdd(target)
-        end
+        if targetCanBeFueled() then findFuelAndAdd(target) end
     end
 end
 
@@ -237,10 +237,11 @@ local function OnEnableHelper(inst, enabled)
             inst.helper:AddTag("NOCLICK")
             inst.helper:AddTag("placer")
 
-            inst.helper.Transform:SetScale(PLACER_SCALE, PLACER_SCALE, PLACER_SCALE)
+            inst.helper.Transform:SetScale(PLACER_SCALE, PLACER_SCALE,
+                                           PLACER_SCALE)
 
-            inst.helper.AnimState:SetBank("poop_flingomatic")
-            inst.helper.AnimState:SetBuild("poop_flingomatic")
+            inst.helper.AnimState:SetBank("fuel_flingomatic")
+            inst.helper.AnimState:SetBuild("fuel_flingomatic")
             inst.helper.AnimState:PlayAnimation("placer")
             inst.helper.AnimState:SetLightOverride(1)
             inst.helper.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
@@ -273,8 +274,8 @@ local function fn()
 
     MakeObstaclePhysics(inst, 0.5)
 
-    inst.AnimState:SetBank("poop_flingomatic")
-    inst.AnimState:SetBuild("poop_flingomatic")
+    inst.AnimState:SetBank("fuel_flingomatic")
+    inst.AnimState:SetBuild("fuel_flingomatic")
     inst.AnimState:PlayAnimation("idle", true)
     --    inst.AnimState:OverrideSymbol("swap_meter", "firefighter_meter", "10")
 
@@ -288,16 +289,14 @@ local function fn()
 
     inst.entity:SetPristine()
 
-    if not TheWorld.ismastersim then
-        return inst
-    end
+    if not TheWorld.ismastersim then return inst end
 
     inst.isopen = false
 
     inst:ListenForEvent("onbuilt", onbuilt)
 
-    inst:WatchWorldState("isnight", onIsNight) -- 监听黑夜
-    inst:WatchWorldState("isday", onIsDay) -- 监听白天
+    --inst:WatchWorldState("isnight", onIsNight) -- 监听黑夜
+    --inst:WatchWorldState("isday", onIsDay) -- 监听白天
     inst.isNight = false
 
     inst:AddComponent("inspectable")
@@ -360,9 +359,9 @@ local function placer_postinit_fn(inst)
     local s = 1 / PLACER_SCALE
     placer2.Transform:SetScale(s, s, s)
 
-    placer2.AnimState:SetBank("poop_flingomatic")
-    placer2.AnimState:SetBuild("poop_flingomatic")
-    placer2.AnimState:PlayAnimation("idle", false)
+    placer2.AnimState:SetBank("fuel_flingomatic")
+    placer2.AnimState:SetBuild("fuel_flingomatic")
+    --placer2.AnimState:PlayAnimation("idle", false)
     placer2.AnimState:SetLightOverride(1)
 
     placer2.entity:SetParent(inst.entity)
@@ -371,5 +370,6 @@ local function placer_postinit_fn(inst)
 end
 
 return Prefab("fuel_flingomatic", fn, assets, prefabs),
-    MakePlacer("fuel_flingomatic_placer", "poop_flingomatic", "poop_flingomatic", "placer", true, nil, nil,
-        PLACER_SCALE, nil, nil, placer_postinit_fn)
+       MakePlacer("fuel_flingomatic_placer", "fuel_flingomatic",
+                  "fuel_flingomatic", "placer", true, nil, nil, PLACER_SCALE,
+                  nil, nil, placer_postinit_fn)
